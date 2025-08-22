@@ -129,19 +129,21 @@ complex* FFT(complex* x, int lgn, complex* W){ // take in a vector of length 2**
             - lgn: log2(n) where n is the size of x.
             - W: pointer to an array of twiddle factors.
     Outputs: Complex Array with the fft output.
-    Note: you must free x_out at the end of program.
+    Note on memory management: you must free x_out at the end of program.
+    Note on scalling the output. This fft scales the output by 1/sqrt(n). The ifft is also scalled by 1/sqrt(n).
     */  
-    int n = 1 << lgn; //2^n; // get the number of samples.
+    int n = 1 << lgn; // 2^n get the number of samples.
+    int one_sqrt_n = 1/sqrt(n); // for scaling the output.
 
-    
     complex* x_out = malloc(n * sizeof(complex)); //allocate heap memory for the output.
-
+    
     int bit_reverse_index; 
     for(int i = 0; i < n; i++){ // get the bit reversal lookup table.
         bit_reverse_index = reverse_bits(i, lgn);
         x_out[bit_reverse_index] = x[i]; // map bit reversed array to the input array.
     }
 
+    //Think of these for loops as matrix multiplications. The inmost for loop is the butterfly.
     for(int i = 0; i< lgn; i++){ // O(lgn) loop
         int m = 1 << (i + 1); // 2^(i+1)
 
@@ -149,9 +151,11 @@ complex* FFT(complex* x, int lgn, complex* W){ // take in a vector of length 2**
 
         for(int k = 0; k<n; k = k+m){ // iterate by m.
 
-            for(int j = 0; j < m/2; j++){
+            for(int j = 0; j < m/2; j++){ //Butterfly opperation.
                 complex t = MUL_C(x_out[k+j+m/2], W[j * n / m]); 
                 complex u = x_out[k+j];
+                
+                //how should I scale?
                 x_out[k + j] = ADD_C(u, t);
                 x_out[k + j + m/2] = SUB_C(u, t);
             }
