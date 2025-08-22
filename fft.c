@@ -65,19 +65,60 @@ double PHASE_C(complex a){
     return phase_a;
 }
 
-int reverse_bits(int num, int n_powers) {
+int reverse_bits(int num, int lgn) {
     int reverse_num = 0;
     int i;
 
-    for (i = 0; i < n_powers; i++) {
+    for (i = 0; i < lgn; i++) {
         if ((num >> i) & 1) { // Check the i-th bit from the right
-            reverse_num |= (1 << ((n_powers - 1) - i)); // Set the mirrored bit in reverse_num
+            reverse_num |= (1 << ((lgn - 1) - i)); // Set the mirrored bit in reverse_num
         }
     }
     return reverse_num;
 }
 
+complex* compute_twiddle_factors(int N){ // compute twiddle factors for roots of unity N.
 
+    complex* W = (complex *)malloc(sizeof(complex)*N); //get a pointer to the front of an N-length array of complex structs.
+    if (W == NULL) {
+        perror("malloc failed");
+        exit(1);
+    }
+
+    for(int k = 0; k < N; k++){
+        W[k].real = cos(2*M_PI*k/N);
+        W[k].img = sin(2*M_PI*k/N);
+    }
+
+    return W;
+}
+
+complex* FFT(complex* x, int lgn){ // take in a vector of length 2**lgn and return its DFT. 
+    int n = pow(2, lgn); // get the number of samples.
+
+    complex x_bit_rev[n]; // no complex* because we are actually making a list not a pointer to the first item of a list.
+    int bit_reverse_index; 
+    for(int i = 0; i < n; i++){ // get the bit reversal lookup table.
+        bit_reverse_index = reverse_bits(i, lgn);
+        x_bit_rev[bit_reverse_index] = x[i]; // map bit reversed array to the input array.
+    }
+
+    for(int i = 0; i< lgn; i++){ // O(lgn) loop
+        int m = pow(2, i);
+        // Get ith root of unity twiddle factor
+        for(int k = 0; k<n; k = k+m){ // iterate by m.
+
+            for(int j = 0; j < m/2; j++){
+
+            }
+
+
+        }
+
+    }
+
+
+}
 
 int main(){
     int bits = 1;
