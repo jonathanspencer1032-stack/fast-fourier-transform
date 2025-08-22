@@ -2,6 +2,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <limits.h>
+#include <stdlib.h>
 /*
 This program takes in a signal l of 2**n length and returns the FFT(l). My main resource for learning about 
 FFT has been the book "Lectures on the Fourier Transform and its Application" by Brad G. Osgood. This resource
@@ -29,6 +30,10 @@ typedef struct {
 
 //helper functions for complex numbers.
 complex ADD_C(complex a, complex b){
+    /*
+    Inputs: 2 complex number structs
+    Outputs: The sum of the two input complex numbers
+    */
     complex ADD_COMP;
     ADD_COMP.real = a.real + b.real;
     ADD_COMP.img = a.img + b.img;
@@ -36,6 +41,10 @@ complex ADD_C(complex a, complex b){
 }
 
 complex SUB_C(complex a, complex b){
+    /*
+    Inputs: 2 complex number structs
+    Outputs: The difference of the two input complex numbers
+    */
     complex SUB_COMP;
     SUB_COMP.real = a.real - b.real;
     SUB_COMP.img = a.img - b.img;
@@ -43,6 +52,11 @@ complex SUB_C(complex a, complex b){
 }
 
 complex MUL_C(complex a, complex b){
+    /*
+    Inputs: 2 complex number structs
+    Outputs: The product of the two input complex numbers
+    */
+
     //(a.real + a.img i)(b.real + b.img i)
     //(a.real * b.real) + (a.real*b.img i) + (a.img * b.real i) + (a.img * b.img * i**2)
     //(a.real * b.real- a.img * b.img) + (a.real*b.img + a.img * b.real) i 
@@ -53,19 +67,30 @@ complex MUL_C(complex a, complex b){
 }
 
 double MAG_C(complex a){
-    //get the magnitude of complex number a.
+    /*
+    Inputs: 1 complex number struct
+    Outputs: The magnitude of that complex number
+    */
     double mag_a = sqrt(pow(a.real,2)+pow(a.img,2));
     return mag_a;
 }
 
 double PHASE_C(complex a){
-    //get the phase of a complex number a. TOA: tangent = opposite / adjacent. 
-    double toa = a.img / a.real;
-    double phase_a = atan(toa);
+    /*
+    Inputs: 1 complex number
+    Outputs: The phase of the complex number
+    */
+    
+    double phase_a = atan2(a.img, a.real);
     return phase_a;
 }
 
 int reverse_bits(int num, int lgn) {
+    /*
+    Inputs: -integer to be bit flipped.
+            -log(n) where n is the size of the dft.
+    Outputs: integer representation of the flipped bits for the input int and size.
+    */
     int reverse_num = 0;
     int i;
 
@@ -78,6 +103,11 @@ int reverse_bits(int num, int lgn) {
 }
 
 complex* compute_twiddle_factors(int N){ // compute twiddle factors for roots of unity N.
+    /*
+    Inputs: size of the DFT.
+    Outputs: pointer to the beginning of an array of complex numbers on the heap.
+    Note: you must free this at the end.
+    */
 
     complex* W = (complex *)malloc(sizeof(complex)*N); //get a pointer to the front of an N-length array of complex structs.
     if (W == NULL) {
@@ -86,45 +116,65 @@ complex* compute_twiddle_factors(int N){ // compute twiddle factors for roots of
     }
 
     for(int k = 0; k < N; k++){
-        W[k].real = cos(2*M_PI*k/N);
-        W[k].img = sin(2*M_PI*k/N);
+        W[k].real = cos(2*M_PI*k/N); 
+        W[k].img = -sin(2*M_PI*k/N); //negative for the fft, possitive for ifft.
     }
 
     return W;
 }
 
-complex* FFT(complex* x, int lgn){ // take in a vector of length 2**lgn and return its DFT. 
-    int n = pow(2, lgn); // get the number of samples.
+complex* FFT(complex* x, int lgn, complex* W){ // take in a vector of length 2**lgn and return its DFT.
+    /*
+    Inputs: - x: the complex samples.
+            - lgn: log2(n) where n is the size of x.
+            - W: pointer to an array of twiddle factors.
+    Outputs: Complex Array with the fft output.
+    Note: you must free x_out at the end of program.
+    */  
+    int n = 1 << lgn; //2^n; // get the number of samples.
 
-    complex x_bit_rev[n]; // no complex* because we are actually making a list not a pointer to the first item of a list.
+    
+    complex* x_out = malloc(n * sizeof(complex)); //allocate heap memory for the output.
+
     int bit_reverse_index; 
     for(int i = 0; i < n; i++){ // get the bit reversal lookup table.
         bit_reverse_index = reverse_bits(i, lgn);
-        x_bit_rev[bit_reverse_index] = x[i]; // map bit reversed array to the input array.
+        x_out[bit_reverse_index] = x[i]; // map bit reversed array to the input array.
     }
 
     for(int i = 0; i< lgn; i++){ // O(lgn) loop
-        int m = pow(2, i);
-        // Get ith root of unity twiddle factor
+        int m = 1 << (i + 1); // 2^(i+1)
+
+        // Get th root of unity twiddle factor
+
         for(int k = 0; k<n; k = k+m){ // iterate by m.
 
             for(int j = 0; j < m/2; j++){
-
+                complex t = MUL_C(x_out[k+j+m/2], W[j * n / m]); 
+                complex u = x_out[k+j];
+                x_out[k + j] = ADD_C(u, t);
+                x_out[k + j + m/2] = SUB_C(u, t);
             }
-
-
         }
-
     }
 
-
+    return x_out;
 }
 
-int main(){
-    int bits = 1;
-    int powers = 3; //2**3 = 8
+int main() {
+    int N = 8;
+    complex* twiddle = compute_twiddle_factors(N);
 
-    printf("Reverse bit of %u is %u\n", bits, reverse_bits(bits, powers));
+    complex x[8] = { {0,0},{1,0},{2,0},{3,0},{4,0},{5,0},{6,0},{7,0} };
+    complex* x_fft = FFT(x, 3, twiddle);
 
+    //Check results
+    printf("FFT output:\n");
+    for(int i = 0; i < N; i++){
+        printf("x_fft[%d]: %.5f + %.5fi, |%.5f|\n", 
+               i, x_fft[i].real, x_fft[i].img, MAG_C(x_fft[i]));
+    }
+    free(twiddle);
+    free(x_fft);
     return 0;
 }
