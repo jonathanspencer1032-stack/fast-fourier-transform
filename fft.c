@@ -17,8 +17,6 @@ Divide and conquer nature. O(n*log(n))
 
 Take in a signal l of radix-2 (length(l) = 2**n for some natural number n).
 Sort the indices using bit reversal
-
-
 */
 
 //struct to hold complex numbers.
